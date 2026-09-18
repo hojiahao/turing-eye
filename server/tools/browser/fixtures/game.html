@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R1 Canvas fixture</title>
+<link rel="icon" href="data:,">
+<style>
+  body { margin: 20px; color: #192126; background: #fff; font: 16px/1.5 system-ui, sans-serif; }
+  button { width: 120px; height: 40px; background: #16745c; color: white; border: 0; }
+  canvas { display: block; margin-top: 20px; }
+  [data-private] { position: absolute; top: 350px; left: 20px; width: 240px; height: 30px; background: #ff00ff; }
+</style>
+<h1>R1 Canvas fixture</h1>
+<button id="start">Start</button>
+<p id="state"></p>
+<canvas width="320" height="160" aria-label="game board"></canvas>
+<div data-private>R1_SECRET_SENTINEL</div>
+<input type="password" value="R1_PASSWORD_SENTINEL" hidden>
+<script>
+  const canvas = document.querySelector('canvas');
+  const painter = canvas.getContext('2d');
+  let position = Number(localStorage.getItem('position') || 0);
+  function draw() {
+    document.querySelector('#state').textContent = 'Position ' + position + '. Cookie ' + (document.cookie.includes('played=1') ? 'present' : 'fresh');
+    painter.fillStyle = '#dcecf0'; painter.fillRect(0, 0, 320, 160);
+    painter.fillStyle = '#207f62'; painter.fillRect(15 + position * 25, 55, 35, 35);
+    painter.fillStyle = '#c84d48'; painter.fillRect(275, 55, 25, 35);
+  }
+  function advance() {
+    position = (position + 1) % 9;
+    localStorage.setItem('position', String(position));
+    document.cookie = 'played=1; SameSite=Strict; Path=/';
+    console.log('Moved to ' + position + ' R1_SECRET_SENTINEL');
+    draw();
+  }
+  document.querySelector('#start').onclick = advance;
+  window.addEventListener('keydown', (event) => { if (event.key === 'ArrowRight') advance(); });
+  fetch('/missing');
+  console.log('Fixture ready R1_SECRET_SENTINEL');
+  draw();
+</script>
+</html>
