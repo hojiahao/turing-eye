@@ -1,0 +1,769 @@
+{
+  "description": "1.0 设计契约样例。schema_valid/schema_invalid 由 JSON Schema 检查；business_invalid 形状合法但必须在未来业务测试拒绝，不能算 Schema 已实现业务校验。",
+  "cases": [
+    {
+      "name": "six_dimensions_platform_input",
+      "schema": "CreatePlanRequest",
+      "expect": "schema_valid",
+      "value": {
+        "challenge": {
+          "title": "双人小游戏",
+          "requirements": "制作可在浏览器游玩的双人小游戏。"
+        },
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "title": "玩法",
+            "weight_ratio": "0.2000",
+            "ai_weight_ratio": "0.3725",
+            "human_weight_ratio": "0.6275"
+          },
+          {
+            "dimension_key": "implementation",
+            "title": "实现",
+            "weight_ratio": "0.2000",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "experience",
+            "title": "体验",
+            "weight_ratio": "0.2000",
+            "ai_weight_ratio": "0.5000",
+            "human_weight_ratio": "0.5000"
+          },
+          {
+            "dimension_key": "theme",
+            "title": "主题",
+            "weight_ratio": "0.2000",
+            "ai_weight_ratio": "0.5000",
+            "human_weight_ratio": "0.5000"
+          },
+          {
+            "dimension_key": "resource_design",
+            "title": "资源设计",
+            "weight_ratio": "0.1000",
+            "ai_weight_ratio": "0.8000",
+            "human_weight_ratio": "0.2000"
+          },
+          {
+            "dimension_key": "delivery",
+            "title": "交付",
+            "weight_ratio": "0.1000",
+            "ai_weight_ratio": "0.0000",
+            "human_weight_ratio": "1.0000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "seven_dimensions_platform_input",
+      "schema": "CreatePlanRequest",
+      "expect": "schema_valid",
+      "value": {
+        "challenge": {
+          "title": "浏览器游戏",
+          "requirements": "通过键盘或鼠标进行游戏。"
+        },
+        "dimensions": [
+          {
+            "dimension_key": "one",
+            "title": "玩法",
+            "weight_ratio": "0.1429",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "two",
+            "title": "主题",
+            "weight_ratio": "0.1429",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "three",
+            "title": "实现",
+            "weight_ratio": "0.1429",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "four",
+            "title": "视觉",
+            "weight_ratio": "0.1429",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "five",
+            "title": "反馈",
+            "weight_ratio": "0.1429",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "six",
+            "title": "资源设计",
+            "weight_ratio": "0.1429",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "seven",
+            "title": "交付",
+            "weight_ratio": "0.1426",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "draft_can_be_incomplete",
+      "schema": "SavePlanDraftRequest",
+      "expect": "schema_valid",
+      "value": {
+        "title": "浏览器游戏评审方案",
+        "challenge": {
+          "title": "浏览器游戏",
+          "requirements": "制作可玩的游戏。"
+        },
+        "decision_thresholds": null,
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "title": "玩法",
+            "weight_ratio": "1.0000",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000",
+            "indicators": [
+              {
+                "title": "开始与结束",
+                "weight_ratio": null,
+                "evaluation_focus": "玩家能否理解目标并完成一局。",
+                "evidence_requirements": null,
+                "scoring_guidance": null
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "four_decimal_ratio",
+      "schema": "Ratio",
+      "expect": "schema_valid",
+      "value": "0.3725"
+    },
+    {
+      "name": "ratio_is_not_number",
+      "schema": "Ratio",
+      "expect": "schema_invalid",
+      "value": 0.3725
+    },
+    {
+      "name": "ratio_has_four_places",
+      "schema": "Ratio",
+      "expect": "schema_invalid",
+      "value": "0.37"
+    },
+    {
+      "name": "ratio_cannot_exceed_one",
+      "schema": "Ratio",
+      "expect": "schema_invalid",
+      "value": "1.0001"
+    },
+    {
+      "name": "genuine_zero",
+      "schema": "Score",
+      "expect": "schema_valid",
+      "value": 0
+    },
+    {
+      "name": "score_decimal_precision",
+      "schema": "Score",
+      "expect": "schema_valid",
+      "value": 0.07
+    },
+    {
+      "name": "score_too_precise",
+      "schema": "Score",
+      "expect": "schema_invalid",
+      "value": 80.125
+    },
+    {
+      "name": "null_is_not_a_score",
+      "schema": "Score",
+      "expect": "schema_invalid",
+      "value": null
+    },
+    {
+      "name": "create_review_from_url",
+      "schema": "CreateReviewRequest",
+      "expect": "schema_valid",
+      "value": {
+        "plan_id": "plan_example",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "submission_id": "submission_example",
+        "base_url": "https://game.example.com/",
+        "payload_url": "https://files.example.com/source.zip",
+        "plan_revision": 1
+      }
+    },
+    {
+      "name": "create_review_reuses_archive",
+      "schema": "CreateReviewRequest",
+      "expect": "schema_valid",
+      "value": {
+        "plan_id": "plan_example",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "submission_id": "submission_example",
+        "base_url": "https://game.example.com/",
+        "artifact_id": "artifact_source_example",
+        "plan_revision": 1
+      }
+    },
+    {
+      "name": "create_requires_source",
+      "schema": "CreateReviewRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "plan_id": "plan_example",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "submission_id": "submission_example",
+        "base_url": "https://game.example.com/",
+        "plan_revision": 1
+      }
+    },
+    {
+      "name": "source_is_exclusive",
+      "schema": "CreateReviewRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "plan_id": "plan_example",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "submission_id": "submission_example",
+        "base_url": "https://game.example.com/",
+        "payload_url": "https://files.example.com/source.zip",
+        "artifact_id": "artifact_source_example",
+        "plan_revision": 1
+      }
+    },
+    {
+      "name": "pure_human_receipt",
+      "schema": "ReviewReceipt",
+      "expect": "schema_valid",
+      "value": {
+        "run_id": "run_human",
+        "submission_id": "submission_example",
+        "plan": {
+          "plan_id": "plan_human",
+          "revision": 1,
+          "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "state": "not_required",
+        "job_id": null,
+        "created_at": "2026-09-17T15:00:00+08:00",
+        "status_url": "/v2/reviews/run_human"
+      }
+    },
+    {
+      "name": "human_initial_zero_and_english",
+      "schema": "HumanResultsRequest",
+      "expect": "schema_valid",
+      "value": {
+        "expected_revision": 0,
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "human_score": 0,
+            "comment": "Game cannot start. 已检查启动入口。"
+          }
+        ],
+        "overall_comment": null
+      }
+    },
+    {
+      "name": "human_cannot_override_weight",
+      "schema": "HumanResultsRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "expected_revision": 0,
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "human_score": 60,
+            "ai_weight_ratio": "0.0000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "human_cannot_omit_revision",
+      "schema": "HumanResultsRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "human_score": 60
+          }
+        ]
+      }
+    },
+    {
+      "name": "human_no_prior_result",
+      "schema": "HumanResults",
+      "expect": "schema_valid",
+      "value": {
+        "run_id": "run_example",
+        "revision": 0,
+        "dimensions": [],
+        "overall_comment": null,
+        "submitted_at": null
+      }
+    },
+    {
+      "name": "valid_zero_indicator",
+      "schema": "IndicatorScore",
+      "expect": "schema_valid",
+      "value": {
+        "indicator_key": "onboarding",
+        "title": "上手引导",
+        "weight_ratio": "1.0000",
+        "status": "scored",
+        "score": 0,
+        "comment": null,
+        "rationale": "开始按钮无法响应，源码确认入口未绑定。",
+        "reason_code": null,
+        "evidence_refs": [
+          "artifact_example"
+        ]
+      }
+    },
+    {
+      "name": "missing_indicator_is_null",
+      "schema": "IndicatorScore",
+      "expect": "schema_valid",
+      "value": {
+        "indicator_key": "onboarding",
+        "title": "上手引导",
+        "weight_ratio": "1.0000",
+        "status": "unavailable",
+        "score": null,
+        "comment": null,
+        "rationale": null,
+        "reason_code": "EVIDENCE_COLLECTION_FAILED",
+        "evidence_refs": []
+      }
+    },
+    {
+      "name": "missing_cannot_be_zero",
+      "schema": "IndicatorScore",
+      "expect": "schema_invalid",
+      "value": {
+        "indicator_key": "onboarding",
+        "title": "上手引导",
+        "weight_ratio": "1.0000",
+        "status": "unavailable",
+        "score": 0,
+        "comment": null,
+        "rationale": null,
+        "reason_code": "EVIDENCE_COLLECTION_FAILED",
+        "evidence_refs": []
+      }
+    },
+    {
+      "name": "retry_summary_only",
+      "schema": "RetryRequest",
+      "expect": "schema_valid",
+      "value": {
+        "target": "summary"
+      }
+    },
+    {
+      "name": "retry_summary_report",
+      "schema": "RetryRequest",
+      "expect": "schema_valid",
+      "value": {
+        "target": "publication",
+        "report_type": "summary"
+      }
+    },
+    {
+      "name": "publication_retry_requires_type",
+      "schema": "RetryRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "target": "publication"
+      }
+    },
+    {
+      "name": "summary_retry_is_not_report_selector",
+      "schema": "RetryRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "target": "summary",
+        "report_type": "ai"
+      }
+    },
+    {
+      "name": "evidence_event",
+      "schema": "RuntimeEvent",
+      "expect": "schema_valid",
+      "value": {
+        "schema_version": "1",
+        "run_id": "run_example",
+        "sequence": "42",
+        "kind": "evidence.ready",
+        "occurred_at": "2026-09-17T15:20:00+08:00",
+        "stage": "collect",
+        "summary": "已保存结算截图。",
+        "data": {
+          "artifact_id": "artifact_example",
+          "media_type": "image/png"
+        }
+      }
+    },
+    {
+      "name": "event_type_controls_payload",
+      "schema": "RuntimeEvent",
+      "expect": "schema_invalid",
+      "value": {
+        "schema_version": "1",
+        "run_id": "run_example",
+        "sequence": "42",
+        "kind": "evidence.ready",
+        "occurred_at": "2026-09-17T15:20:00+08:00",
+        "stage": "collect",
+        "summary": "已保存截图。",
+        "data": {
+          "score_revision": 1,
+          "score_status": "complete"
+        }
+      }
+    },
+    {
+      "name": "problem_revision_conflict",
+      "schema": "Problem",
+      "expect": "schema_valid",
+      "value": {
+        "type": "urn:turing-eye:problem:human_revision_conflict",
+        "title": "人工结果版本已变化",
+        "status": 409,
+        "code": "HUMAN_REVISION_CONFLICT",
+        "detail": "请读取当前人工结果后重新确认提交。",
+        "instance": "/v2/reviews/run_example/human-results",
+        "request_id": "req_example",
+        "retryable": false,
+        "errors": []
+      }
+    },
+    {
+      "name": "invalid_dimension_sum",
+      "schema": "CreatePlanRequest",
+      "expect": "business_invalid",
+      "error_code": "INVALID_DIMENSION_WEIGHTS",
+      "value": {
+        "challenge": {
+          "title": "游戏",
+          "requirements": "制作游戏。"
+        },
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "title": "玩法",
+            "weight_ratio": "0.9000",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "invalid_channel_sum",
+      "schema": "CreatePlanRequest",
+      "expect": "business_invalid",
+      "error_code": "INVALID_CHANNEL_WEIGHTS",
+      "value": {
+        "challenge": {
+          "title": "游戏",
+          "requirements": "制作游戏。"
+        },
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "title": "玩法",
+            "weight_ratio": "1.0000",
+            "ai_weight_ratio": "0.9000",
+            "human_weight_ratio": "0.9000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "duplicate_dimension_key",
+      "schema": "CreatePlanRequest",
+      "expect": "business_invalid",
+      "error_code": "DUPLICATE_DIMENSION_KEY",
+      "value": {
+        "challenge": {
+          "title": "游戏",
+          "requirements": "制作游戏。"
+        },
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "title": "玩法",
+            "weight_ratio": "0.5000",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          },
+          {
+            "dimension_key": "gameplay",
+            "title": "另一名称",
+            "weight_ratio": "0.5000",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ratio_rejects_newline",
+      "schema": "Ratio",
+      "expect": "schema_invalid",
+      "value": "0.2000\n"
+    },
+    {
+      "name": "scoringkey_rejects_newline",
+      "schema": "ScoringKey",
+      "expect": "schema_invalid",
+      "value": "gameplay\n"
+    },
+    {
+      "name": "identifier_rejects_newline",
+      "schema": "Identifier",
+      "expect": "schema_invalid",
+      "value": "run_1\n"
+    },
+    {
+      "name": "sha256_rejects_newline",
+      "schema": "Sha256",
+      "expect": "schema_invalid",
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+    },
+    {
+      "name": "v2_requires_named_plan_revision",
+      "schema": "CreateReviewRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "plan_id": "plan_example",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "submission_id": "submission_example",
+        "base_url": "https://game.example.com/",
+        "payload_url": "https://files.example.com/source.zip",
+        "revision": 1
+      }
+    },
+    {
+      "name": "creation_requires_nonnull_plan",
+      "schema": "CreateReviewRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "plan_id": null,
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "submission_id": "submission_example",
+        "base_url": "https://game.example.com/",
+        "payload_url": "https://files.example.com/source.zip",
+        "plan_revision": 1
+      }
+    },
+    {
+      "name": "human_submission_cannot_be_null",
+      "schema": "HumanResultsRequest",
+      "expect": "schema_invalid",
+      "value": {
+        "expected_revision": 0,
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "human_score": null,
+            "comment": "Game cannot start. 已检查启动入口。"
+          }
+        ],
+        "overall_comment": null
+      }
+    },
+    {
+      "name": "partial_summary_keeps_indicator_scores",
+      "schema": "SummaryDimension",
+      "expect": "schema_valid",
+      "value": {
+        "dimension_key": "gameplay",
+        "title": "玩法",
+        "weight_ratio": "1.0000",
+        "ai_weight_ratio": "0.5000",
+        "human_weight_ratio": "0.5000",
+        "ai_score": null,
+        "human_score": 90,
+        "final_score": null,
+        "ai_comment": null,
+        "human_comment": "总体操作清楚。",
+        "indicators": [
+          {
+            "indicator_key": "onboarding",
+            "title": "上手引导",
+            "weight_ratio": "0.5000",
+            "status": "scored",
+            "score": 80,
+            "comment": null,
+            "rationale": "目标和操作清楚，已完成主要流程。",
+            "reason_code": null,
+            "evidence_refs": [
+              "artifact_example"
+            ]
+          },
+          {
+            "indicator_key": "recovery",
+            "title": "失败后恢复",
+            "weight_ratio": "0.5000",
+            "status": "unavailable",
+            "score": null,
+            "comment": null,
+            "rationale": null,
+            "reason_code": "EVIDENCE_COLLECTION_FAILED",
+            "evidence_refs": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "summary_snapshot_has_commentary_source",
+      "schema": "SummarySnapshot",
+      "expect": "schema_valid",
+      "value": {
+        "plan": {
+          "plan_id": "plan_example",
+          "revision": 1,
+          "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "summary_revision": 2,
+        "summary_status": "partial",
+        "source_revisions": {
+          "plan_revision": 1,
+          "score_revision": 2,
+          "human_revision": 1,
+          "commentary_revision": null
+        },
+        "final_score": null,
+        "decision": null,
+        "overall_human_comment": null,
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "title": "玩法",
+            "weight_ratio": "1.0000",
+            "ai_weight_ratio": "0.5000",
+            "human_weight_ratio": "0.5000",
+            "ai_score": null,
+            "human_score": 90,
+            "final_score": null,
+            "ai_comment": null,
+            "human_comment": "总体操作清楚。",
+            "indicators": [
+              {
+                "indicator_key": "onboarding",
+                "title": "上手引导",
+                "weight_ratio": "0.5000",
+                "status": "scored",
+                "score": 80,
+                "comment": null,
+                "rationale": "目标和操作清楚，已完成主要流程。",
+                "reason_code": null,
+                "evidence_refs": [
+                  "artifact_example"
+                ]
+              },
+              {
+                "indicator_key": "recovery",
+                "title": "失败后恢复",
+                "weight_ratio": "0.5000",
+                "status": "unavailable",
+                "score": null,
+                "comment": null,
+                "rationale": null,
+                "reason_code": "EVIDENCE_COLLECTION_FAILED",
+                "evidence_refs": []
+              }
+            ]
+          }
+        ],
+        "missing_scores": [
+          {
+            "dimension_key": "gameplay",
+            "indicator_key": "recovery",
+            "channel": "ai",
+            "category": "service",
+            "reason_code": "EVIDENCE_COLLECTION_FAILED"
+          }
+        ]
+      }
+    },
+    {
+      "name": "unavailable_snapshot_has_revision",
+      "schema": "Scores",
+      "expect": "schema_valid",
+      "value": {
+        "run_id": "run_example",
+        "plan": {
+          "plan_id": "plan_example",
+          "revision": 1,
+          "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "score_revision": 1,
+        "score_status": "unavailable",
+        "commentary_revision": null,
+        "commentary_status": "not_required",
+        "ai_score": null,
+        "decision": null,
+        "overall_comment": null,
+        "recommendations": [],
+        "dimensions": [
+          {
+            "dimension_key": "gameplay",
+            "title": "玩法",
+            "weight_ratio": "1.0000",
+            "ai_weight_ratio": "1.0000",
+            "human_weight_ratio": "0.0000",
+            "score_status": "unavailable",
+            "ai_score": null,
+            "comment": null,
+            "indicators": [
+              {
+                "indicator_key": "recovery",
+                "title": "失败后恢复",
+                "weight_ratio": "1.0000",
+                "status": "unavailable",
+                "score": null,
+                "comment": null,
+                "rationale": null,
+                "reason_code": "EVIDENCE_COLLECTION_FAILED",
+                "evidence_refs": []
+              }
+            ]
+          }
+        ],
+        "missing_scores": [
+          {
+            "dimension_key": "gameplay",
+            "indicator_key": "recovery",
+            "channel": "ai",
+            "category": "service",
+            "reason_code": "EVIDENCE_COLLECTION_FAILED"
+          }
+        ]
+      }
+    }
+  ]
+}

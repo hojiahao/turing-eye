@@ -1,0 +1,37 @@
+[package]
+name = "turing-eye-service"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[features]
+dependency-probes = [
+    "dep:rig-core", "dep:reqwest", "dep:httpdate", "dep:tracing",
+    "dep:sqlx", "dep:object_store", "dep:sha2", "dep:uuid", "dep:url",
+]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+jsonschema = { version = "0.33", default-features = false }
+rig-core = { version = "=0.42.0", default-features = false, features = ["reqwest", "rustls"], optional = true }
+reqwest = { version = "=0.13.5", default-features = false, features = ["json", "rustls"], optional = true }
+httpdate = { version = "=1.0.3", optional = true }
+tracing = { version = "=0.1.44", optional = true }
+sqlx = { version = "=0.8.6", default-features = false, features = ["runtime-tokio-rustls", "postgres", "json"], optional = true }
+object_store = { version = "=0.12.5", default-features = false, features = ["aws"], optional = true }
+sha2 = { version = "=0.10.9", optional = true }
+uuid = { version = "=1.18.1", features = ["v4"], optional = true }
+url = { version = "=2.5.7", optional = true }
+
+[[bin]]
+name = "probe_models"
+path = "src/bin/probe_models.rs"
+required-features = ["dependency-probes"]
+
+[[bin]]
+name = "probe_storage"
+path = "src/bin/probe_storage.rs"
+required-features = ["dependency-probes"]

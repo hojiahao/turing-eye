@@ -1,0 +1,520 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:turing-eye:agent-review:tool-protocol:2.0",
+  "title": "Rust Worker / Node 浏览器工具协议 2.0（评审草案）",
+  "description": "定义一个 JSONL 消息帧，仅允许本地引用。归属、字节预算、截止时间及生命周期还须按配套协议文档中的状态规则校验。",
+  "oneOf": [
+    { "$ref": "#/$defs/Request" },
+    { "$ref": "#/$defs/Result" },
+    { "$ref": "#/$defs/Error" }
+  ],
+  "$defs": {
+    "Id": {
+      "type": "string", "minLength": 1, "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$", "not": { "pattern": "[^A-Za-z0-9_-]" }
+    },
+    "Time": {
+      "type": "string", "format": "date-time", "minLength": 24, "maxLength": 24,
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+    },
+    "Counter": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
+    "Sequence": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "Url": {
+      "type": "string", "format": "uri", "minLength": 8, "maxLength": 2048,
+      "pattern": "^https?://[^/?#@\\s]+(?:[/?#][^\\s]*)?$",
+      "not": { "pattern": "\\s" },
+      "description": "HTTP(S) 页面跳转地址。执行时必须解析 URL、检查授权并拒绝含秘密信息的输入，字符串匹配格式不代表已经获得出网权限。"
+    },
+    "RedactedUrl": {
+      "type": "string", "format": "uri", "minLength": 8, "maxLength": 2048,
+      "pattern": "^(https?|wss?)://[^/?#@\\s]+(?:/[^?#\\s]*)?$",
+      "not": { "pattern": "\\s" },
+      "description": "不包含用户凭据、查询参数或片段，序列化前须对路径中的敏感内容脱敏。"
+    },
+    "Origin": {
+      "type": "string", "format": "uri", "minLength": 8, "maxLength": 256,
+      "pattern": "^https?://(?:\\[[0-9A-Fa-f:]+\\]|[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)(?::[0-9]{1,5})?$",
+      "not": { "pattern": "\\s" }
+    },
+    "Owner": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tenant_id", "run_id", "task_id", "attempt_id", "attempt_generation"],
+      "properties": {
+        "tenant_id": { "$ref": "#/$defs/Id" },
+        "run_id": { "$ref": "#/$defs/Id" },
+        "task_id": { "$ref": "#/$defs/Id" },
+        "attempt_id": { "$ref": "#/$defs/Id" },
+        "attempt_generation": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+      }
+    },
+    "Tool": { "enum": ["open", "observe", "mouse", "keyboard", "console", "network", "close", "cancel"] },
+    "Request": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol_version", "type", "request_id", "call_id", "owner", "session_id", "tool", "deadline_at", "max_result_bytes", "params"],
+      "properties": {
+        "protocol_version": { "const": "2.0" },
+        "type": { "const": "request" },
+        "request_id": { "$ref": "#/$defs/Id" },
+        "call_id": { "$ref": "#/$defs/Id" },
+        "owner": { "$ref": "#/$defs/Owner" },
+        "session_id": { "$ref": "#/$defs/Id" },
+        "tool": { "$ref": "#/$defs/Tool" },
+        "deadline_at": { "$ref": "#/$defs/Time" },
+        "max_result_bytes": { "type": "integer", "minimum": 8192, "maximum": 262144 },
+        "params": {
+          "oneOf": [
+            { "$ref": "#/$defs/OpenParams" }, { "$ref": "#/$defs/ObserveParams" },
+            { "$ref": "#/$defs/MouseParams" }, { "$ref": "#/$defs/KeyboardParams" },
+            { "$ref": "#/$defs/ReadParams" }, { "$ref": "#/$defs/Empty" },
+            { "$ref": "#/$defs/CancelParams" }
+          ]
+        }
+      },
+      "allOf": [
+        { "if": { "properties": { "tool": { "const": "open" } } }, "then": { "properties": { "params": { "$ref": "#/$defs/OpenParams" } } } },
+        { "if": { "properties": { "tool": { "const": "observe" } } }, "then": { "properties": { "params": { "$ref": "#/$defs/ObserveParams" } } } },
+        { "if": { "properties": { "tool": { "const": "mouse" } } }, "then": { "properties": { "params": { "$ref": "#/$defs/MouseParams" } } } },
+        { "if": { "properties": { "tool": { "const": "keyboard" } } }, "then": { "properties": { "params": { "$ref": "#/$defs/KeyboardParams" } } } },
+        { "if": { "properties": { "tool": { "enum": ["console", "network"] } } }, "then": { "properties": { "params": { "$ref": "#/$defs/ReadParams" } } } },
+        { "if": { "properties": { "tool": { "const": "close" } } }, "then": { "properties": { "params": { "$ref": "#/$defs/Empty" } } } },
+        { "if": { "properties": { "tool": { "const": "cancel" } } }, "then": { "properties": { "params": { "$ref": "#/$defs/CancelParams" } } } }
+      ]
+    },
+    "Empty": { "type": "object", "additionalProperties": false, "properties": {}, "maxProperties": 0 },
+    "OpenParams": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["mode", "url", "policy", "viewport", "expires_at"],
+          "properties": {
+            "mode": { "const": "create" },
+            "url": { "$ref": "#/$defs/Url" },
+            "policy": { "$ref": "#/$defs/Policy" },
+            "viewport": { "$ref": "#/$defs/Viewport" },
+            "expires_at": { "$ref": "#/$defs/Time" }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["mode", "url"],
+          "properties": {
+            "mode": { "const": "navigate" },
+            "url": { "$ref": "#/$defs/Url" }
+          }
+        }
+      ]
+    },
+    "Policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["revision", "navigation_origins", "allow_public_subresources", "private_target_ids"],
+      "properties": {
+        "revision": { "$ref": "#/$defs/Id" },
+        "navigation_origins": { "type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": { "$ref": "#/$defs/Origin" } },
+        "allow_public_subresources": { "type": "boolean" },
+        "private_target_ids": { "type": "array", "maxItems": 32, "uniqueItems": true, "items": { "$ref": "#/$defs/Id" } }
+      }
+    },
+    "Viewport": {
+      "type": "object", "additionalProperties": false,
+      "required": ["width_px", "height_px"],
+      "properties": {
+        "width_px": { "type": "integer", "minimum": 320, "maximum": 2560 },
+        "height_px": { "type": "integer", "minimum": 240, "maximum": 1440 }
+      }
+    },
+    "ObserveParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["include_dom", "include_screenshot"],
+      "properties": {
+        "include_dom": { "type": "boolean" },
+        "include_screenshot": { "type": "boolean" }
+      },
+      "anyOf": [
+        { "properties": { "include_dom": { "const": true } } },
+        { "properties": { "include_screenshot": { "const": true } } }
+      ]
+    },
+    "MouseParams": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["action", "x_px", "y_px", "button", "click_count"],
+          "properties": {
+            "action": { "const": "click" },
+            "x_px": { "$ref": "#/$defs/X" }, "y_px": { "$ref": "#/$defs/Y" },
+            "button": { "$ref": "#/$defs/Button" },
+            "click_count": { "type": "integer", "minimum": 1, "maximum": 2 }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["action", "x_px", "y_px"],
+          "properties": { "action": { "const": "move" }, "x_px": { "$ref": "#/$defs/X" }, "y_px": { "$ref": "#/$defs/Y" } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["action", "button"],
+          "properties": { "action": { "enum": ["down", "up"] }, "button": { "$ref": "#/$defs/Button" } }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["action", "delta_x_px", "delta_y_px"],
+          "properties": {
+            "action": { "const": "wheel" },
+            "delta_x_px": { "type": "integer", "minimum": -4096, "maximum": 4096 },
+            "delta_y_px": { "type": "integer", "minimum": -4096, "maximum": 4096 }
+          }
+        }
+      ]
+    },
+    "X": { "type": "integer", "minimum": 0, "maximum": 2559 },
+    "Y": { "type": "integer", "minimum": 0, "maximum": 1439 },
+    "Button": { "enum": ["left", "middle", "right"] },
+    "KeyboardParams": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["action", "key"],
+          "properties": {
+            "action": { "enum": ["press", "down", "up"] },
+            "key": {
+              "type": "string", "minLength": 1, "maxLength": 10,
+              "pattern": "^(?:[A-Za-z0-9]|Arrow(?:Up|Down|Left|Right)|Enter|Escape|Tab|Space|Backspace|Delete|Home|End|PageUp|PageDown|Shift|Control|Alt|Meta)$",
+              "not": { "pattern": "\\s" }
+            }
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["action", "text"],
+          "properties": { "action": { "const": "type" }, "text": { "type": "string", "minLength": 1, "maxLength": 4096 } }
+        }
+      ]
+    },
+    "ReadParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["after_sequence", "limit"],
+      "properties": {
+        "after_sequence": { "$ref": "#/$defs/Counter" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "CancelParams": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target_request_id", "target_call_id", "reason"],
+      "properties": {
+        "target_request_id": { "$ref": "#/$defs/Id" },
+        "target_call_id": { "$ref": "#/$defs/Id" },
+        "reason": { "enum": ["run_cancelled", "deadline_exceeded", "lease_lost", "shutdown"] }
+      }
+    },
+    "Result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol_version", "type", "request_id", "call_id", "owner", "session_id", "tool", "completed_at", "duration_ms", "data", "artifacts", "facts"],
+      "properties": {
+        "protocol_version": { "const": "2.0" }, "type": { "const": "result" },
+        "request_id": { "$ref": "#/$defs/Id" }, "call_id": { "$ref": "#/$defs/Id" },
+        "owner": { "$ref": "#/$defs/Owner" }, "session_id": { "$ref": "#/$defs/Id" },
+        "tool": { "$ref": "#/$defs/Tool" },
+        "completed_at": { "$ref": "#/$defs/Time" }, "duration_ms": { "$ref": "#/$defs/Counter" },
+        "data": {
+          "anyOf": [
+            { "$ref": "#/$defs/OpenData" }, { "$ref": "#/$defs/ObserveData" },
+            { "$ref": "#/$defs/InputData" }, { "$ref": "#/$defs/ConsoleData" },
+            { "$ref": "#/$defs/NetworkData" }, { "$ref": "#/$defs/CloseData" },
+            { "$ref": "#/$defs/CancelData" }
+          ]
+        },
+        "artifacts": { "$ref": "#/$defs/Artifacts" }, "facts": { "$ref": "#/$defs/Facts" }
+      },
+      "allOf": [
+        { "if": { "properties": { "tool": { "const": "open" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/OpenData" } } } },
+        { "if": { "properties": { "tool": { "const": "observe" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/ObserveData" } } } },
+        { "if": { "properties": { "tool": { "enum": ["mouse", "keyboard"] } } }, "then": { "properties": { "data": { "$ref": "#/$defs/InputData" } } } },
+        { "if": { "properties": { "tool": { "const": "console" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/ConsoleData" } } } },
+        { "if": { "properties": { "tool": { "const": "network" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/NetworkData" } } } },
+        { "if": { "properties": { "tool": { "const": "close" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/CloseData" } } } },
+        { "if": { "properties": { "tool": { "const": "cancel" } } }, "then": { "properties": { "data": { "$ref": "#/$defs/CancelData" } } } }
+      ]
+    },
+    "Page": {
+      "type": "object", "additionalProperties": false,
+      "required": ["url", "title"],
+      "properties": {
+        "url": { "$ref": "#/$defs/RedactedUrl", "pattern": "^https?://" },
+        "title": { "type": "string", "minLength": 0, "maxLength": 512 }
+      }
+    },
+    "OpenData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["context_state", "page"],
+      "properties": { "context_state": { "const": "open" }, "page": { "$ref": "#/$defs/Page" } }
+    },
+    "ObserveData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["page", "dom", "screenshot_handle"],
+      "properties": {
+        "page": { "$ref": "#/$defs/Page" },
+        "dom": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object", "additionalProperties": false,
+              "required": ["text", "truncated"],
+              "properties": {
+                "text": { "type": "string", "minLength": 0, "maxLength": 16384 },
+                "truncated": { "type": "boolean" }
+              }
+            }
+          ]
+        },
+        "screenshot_handle": { "oneOf": [{ "$ref": "#/$defs/Id" }, { "type": "null" }] }
+      },
+      "anyOf": [
+        { "properties": { "dom": { "not": { "type": "null" } } } },
+        { "properties": { "screenshot_handle": { "$ref": "#/$defs/Id" } } }
+      ]
+    },
+    "InputData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["dispatched"], "properties": { "dispatched": { "const": true } }
+    },
+    "ConsoleData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entries", "next_after_sequence", "has_more", "gap"],
+      "properties": {
+        "entries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/ConsoleEntry" } },
+        "next_after_sequence": { "$ref": "#/$defs/Counter" },
+        "has_more": { "type": "boolean" }, "gap": { "type": "boolean" }
+      }
+    },
+    "ConsoleEntry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sequence", "observed_at", "level", "text", "truncated"],
+      "properties": {
+        "sequence": { "$ref": "#/$defs/Sequence" }, "observed_at": { "$ref": "#/$defs/Time" },
+        "level": { "enum": ["debug", "info", "log", "warning", "error"] },
+        "text": { "type": "string", "minLength": 0, "maxLength": 2048 },
+        "truncated": { "type": "boolean" }
+      }
+    },
+    "NetworkData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entries", "next_after_sequence", "has_more", "gap"],
+      "properties": {
+        "entries": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/NetworkEntry" } },
+        "next_after_sequence": { "$ref": "#/$defs/Counter" },
+        "has_more": { "type": "boolean" }, "gap": { "type": "boolean" }
+      }
+    },
+    "NetworkEntry": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sequence", "observed_at", "url", "method", "resource_type", "status_code", "failure", "duration_ms"],
+      "properties": {
+        "sequence": { "$ref": "#/$defs/Sequence" }, "observed_at": { "$ref": "#/$defs/Time" },
+        "url": { "$ref": "#/$defs/RedactedUrl" },
+        "method": { "type": "string", "minLength": 1, "maxLength": 16, "pattern": "^[A-Z]+$", "not": { "pattern": "[^A-Z]" } },
+        "resource_type": { "enum": ["document", "stylesheet", "image", "media", "font", "script", "xhr", "fetch", "websocket", "other"] },
+        "status_code": { "type": ["integer", "null"], "minimum": 100, "maximum": 599 },
+        "failure": { "enum": [null, "dns", "tls", "connection", "policy_denied", "aborted", "timeout", "other"] },
+        "duration_ms": { "oneOf": [{ "$ref": "#/$defs/Counter" }, { "type": "null" }] }
+      },
+      "anyOf": [
+        { "properties": { "status_code": { "type": "integer" } } },
+        { "properties": { "failure": { "type": "string" } } }
+      ]
+    },
+    "CloseData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["context_state"], "properties": { "context_state": { "const": "closed" } }
+    },
+    "CancelData": {
+      "type": "object", "additionalProperties": false,
+      "required": ["target_request_id", "target_call_id", "disposition", "context_state"],
+      "properties": {
+        "target_request_id": { "$ref": "#/$defs/Id" }, "target_call_id": { "$ref": "#/$defs/Id" },
+        "disposition": { "enum": ["accepted", "already_terminal"] },
+        "context_state": { "enum": ["closing", "closed"] }
+      }
+    },
+    "Artifacts": { "type": "array", "maxItems": 4, "items": { "$ref": "#/$defs/Artifact" } },
+    "Artifact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["handle", "media_type", "byte_length", "sha256"],
+      "properties": {
+        "handle": { "$ref": "#/$defs/Id" },
+        "media_type": { "enum": ["image/png", "text/plain", "application/json"] },
+        "byte_length": { "type": "integer", "minimum": 1, "maximum": 8388608 },
+        "sha256": { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$" }
+      },
+      "description": "已完成写入且不可变的本地暂存文件，不代表业务产物已就绪，也不是已授权的下载地址。"
+    },
+    "Facts": { "type": "array", "maxItems": 64, "items": { "$ref": "#/$defs/Fact" } },
+    "Fact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fact_id", "observed_at", "kind", "summary", "value_path", "artifact_handles"],
+      "properties": {
+        "fact_id": { "$ref": "#/$defs/Id" }, "observed_at": { "$ref": "#/$defs/Time" },
+        "kind": { "enum": ["navigation", "observation", "input", "console", "network", "context", "cancellation", "error"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "value_path": { "type": "string", "minLength": 5, "maxLength": 256, "pattern": "^/(data|error)(/(?:[^~/\\s]|~[01])*)*$", "not": { "pattern": "\\s" } },
+        "artifact_handles": { "type": "array", "maxItems": 4, "uniqueItems": true, "items": { "$ref": "#/$defs/Id" } }
+      },
+      "description": "已脱敏的观察事实，归属沿用所在消息帧。它不是评分结论、隐藏推理或公开的 RuntimeEvent 事件。"
+    },
+    "Error": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol_version", "type", "request_id", "call_id", "owner", "session_id", "tool", "completed_at", "duration_ms", "error", "artifacts", "facts"],
+      "properties": {
+        "protocol_version": { "const": "2.0" }, "type": { "const": "error" },
+        "request_id": { "$ref": "#/$defs/Id" }, "call_id": { "$ref": "#/$defs/Id" },
+        "owner": { "$ref": "#/$defs/Owner" }, "session_id": { "$ref": "#/$defs/Id" },
+        "tool": { "$ref": "#/$defs/Tool" },
+        "completed_at": { "$ref": "#/$defs/Time" }, "duration_ms": { "$ref": "#/$defs/Counter" },
+        "error": { "$ref": "#/$defs/Failure" },
+        "artifacts": { "$ref": "#/$defs/Artifacts" }, "facts": { "$ref": "#/$defs/Facts" }
+      }
+    },
+    "Failure": {
+      "type": "object", "additionalProperties": false,
+      "required": ["code", "stage", "retryable", "detail", "local_execution", "context_state", "external_effects"],
+      "properties": {
+        "code": { "enum": ["INVALID_ARGUMENT", "POLICY_DENIED", "SESSION_UNAVAILABLE", "SESSION_CONFLICT", "SESSION_CLOSING", "CANCEL_TARGET_INVALID", "CAPACITY_EXCEEDED", "DEADLINE_EXCEEDED", "CANCELLED", "BROWSER_DISCONNECTED", "NAVIGATION_FAILED", "INPUT_FAILED", "OBSERVATION_FAILED", "ARTIFACT_FAILED", "RESULT_TOO_LARGE", "INTERNAL_ERROR"] },
+        "stage": { "enum": ["validate", "session", "navigate", "observe", "input", "read", "cleanup", "serialize"] },
+        "retryable": { "type": "boolean" },
+        "detail": { "type": "string", "minLength": 1, "maxLength": 1024 },
+        "local_execution": { "enum": ["not_started", "completed", "stopped", "unknown"] },
+        "context_state": { "enum": ["absent", "open", "closing", "closed", "unknown"] },
+        "external_effects": { "enum": ["none", "possible"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "code": { "enum": ["INVALID_ARGUMENT", "POLICY_DENIED", "SESSION_UNAVAILABLE", "SESSION_CONFLICT", "SESSION_CLOSING", "CANCEL_TARGET_INVALID", "CANCELLED", "RESULT_TOO_LARGE"] } } },
+          "then": { "properties": { "retryable": { "const": false } } }
+        },
+        {
+          "if": { "properties": { "local_execution": { "const": "not_started" } } },
+          "then": { "properties": { "external_effects": { "const": "none" } } }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_open", "call_id": "call_open",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "open", "deadline_at": "2026-09-17T08:00:30.000Z", "max_result_bytes": 65536,
+      "params": { "mode": "create", "url": "https://game.example.com/", "policy": { "revision": "policy_demo", "navigation_origins": ["https://game.example.com"], "allow_public_subresources": true, "private_target_ids": [] }, "viewport": { "width_px": 1280, "height_px": 720 }, "expires_at": "2026-09-17T08:10:00.000Z" }
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_open", "call_id": "call_open",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "open", "completed_at": "2026-09-17T08:00:01.000Z", "duration_ms": 1000,
+      "data": { "context_state": "open", "page": { "url": "https://game.example.com/", "title": "演示作品" } }, "artifacts": [],
+      "facts": [{ "fact_id": "fact_open", "observed_at": "2026-09-17T08:00:01.000Z", "kind": "navigation", "summary": "已按授权打开页面，并收到 DOMContentLoaded 事件。", "value_path": "/data/page/url", "artifact_handles": [] }]
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_observe", "call_id": "call_observe",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "observe", "deadline_at": "2026-09-17T08:00:30.000Z", "max_result_bytes": 65536,
+      "params": { "include_dom": true, "include_screenshot": true }
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_observe", "call_id": "call_observe",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "observe", "completed_at": "2026-09-17T08:00:02.000Z", "duration_ms": 100,
+      "data": { "page": { "url": "https://game.example.com/", "title": "演示作品" }, "dom": { "text": "按钮 开始", "truncated": false }, "screenshot_handle": "capture_demo" },
+      "artifacts": [{ "handle": "capture_demo", "media_type": "image/png", "byte_length": 12345, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }],
+      "facts": [{ "fact_id": "fact_observe", "observed_at": "2026-09-17T08:00:02.000Z", "kind": "observation", "summary": "已采集当前视口截图与可见 DOM 文本。", "value_path": "/data", "artifact_handles": ["capture_demo"] }]
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_mouse", "call_id": "call_mouse",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "mouse", "deadline_at": "2026-09-17T08:00:30.000Z", "max_result_bytes": 65536,
+      "params": { "action": "click", "x_px": 200, "y_px": 150, "button": "left", "click_count": 1 }
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_mouse", "call_id": "call_mouse",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "mouse", "completed_at": "2026-09-17T08:00:03.000Z", "duration_ms": 50,
+      "data": { "dispatched": true }, "artifacts": [],
+      "facts": [{ "fact_id": "fact_mouse", "observed_at": "2026-09-17T08:00:03.000Z", "kind": "input", "summary": "已发送一次鼠标左键点击，尚未确认作品中的操作结果。", "value_path": "/data/dispatched", "artifact_handles": [] }]
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_keyboard", "call_id": "call_keyboard",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "keyboard", "deadline_at": "2026-09-17T08:00:30.000Z", "max_result_bytes": 65536,
+      "params": { "action": "press", "key": "ArrowRight" }
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_keyboard", "call_id": "call_keyboard",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "keyboard", "completed_at": "2026-09-17T08:00:04.000Z", "duration_ms": 20,
+      "data": { "dispatched": true }, "artifacts": [], "facts": []
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_console", "call_id": "call_console",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "console", "deadline_at": "2026-09-17T08:00:30.000Z", "max_result_bytes": 65536,
+      "params": { "after_sequence": 0, "limit": 20 }
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_console", "call_id": "call_console",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "console", "completed_at": "2026-09-17T08:00:05.000Z", "duration_ms": 1,
+      "data": { "entries": [{ "sequence": 1, "observed_at": "2026-09-17T08:00:04.000Z", "level": "error", "text": "Asset could not be decoded.", "truncated": false }], "next_after_sequence": 1, "has_more": false, "gap": false },
+      "artifacts": [], "facts": []
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_network", "call_id": "call_network",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "network", "deadline_at": "2026-09-17T08:00:30.000Z", "max_result_bytes": 65536,
+      "params": { "after_sequence": 0, "limit": 20 }
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_network", "call_id": "call_network",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "network", "completed_at": "2026-09-17T08:00:06.000Z", "duration_ms": 1,
+      "data": { "entries": [{ "sequence": 1, "observed_at": "2026-09-17T08:00:04.000Z", "url": "https://cdn.example.com/asset.png", "method": "GET", "resource_type": "image", "status_code": 404, "failure": null, "duration_ms": 30 }], "next_after_sequence": 1, "has_more": false, "gap": false },
+      "artifacts": [], "facts": []
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_navigate", "call_id": "call_navigate",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "open", "deadline_at": "2026-09-17T08:00:30.000Z", "max_result_bytes": 65536,
+      "params": { "mode": "navigate", "url": "https://game.example.com/level2" }
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_cancel", "call_id": "call_cancel",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "cancel", "deadline_at": "2026-09-17T08:00:12.000Z", "max_result_bytes": 8192,
+      "params": { "target_request_id": "req_navigate", "target_call_id": "call_navigate", "reason": "run_cancelled" }
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_cancel", "call_id": "call_cancel",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "cancel", "completed_at": "2026-09-17T08:00:07.010Z", "duration_ms": 10,
+      "data": { "target_request_id": "req_navigate", "target_call_id": "call_navigate", "disposition": "accepted", "context_state": "closing" },
+      "artifacts": [], "facts": [{ "fact_id": "fact_cancel", "observed_at": "2026-09-17T08:00:07.010Z", "kind": "cancellation", "summary": "已接收取消请求，等待浏览器上下文关闭。", "value_path": "/data/context_state", "artifact_handles": [] }]
+    },
+    {
+      "protocol_version": "2.0", "type": "error", "request_id": "req_navigate", "call_id": "call_navigate",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "open", "completed_at": "2026-09-17T08:00:07.020Z", "duration_ms": 1020,
+      "error": { "code": "CANCELLED", "stage": "navigate", "retryable": false, "detail": "Cancellation accepted; local operation termination is unconfirmed.", "local_execution": "unknown", "context_state": "closing", "external_effects": "possible" },
+      "artifacts": [], "facts": []
+    },
+    {
+      "protocol_version": "2.0", "type": "request", "request_id": "req_close", "call_id": "call_close",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "close", "deadline_at": "2026-09-17T08:00:12.000Z", "max_result_bytes": 8192, "params": {}
+    },
+    {
+      "protocol_version": "2.0", "type": "result", "request_id": "req_close", "call_id": "call_close",
+      "owner": { "tenant_id": "tenant_demo", "run_id": "run_demo", "task_id": "task_collect", "attempt_id": "attempt_demo", "attempt_generation": 1 },
+      "session_id": "session_demo", "tool": "close", "completed_at": "2026-09-17T08:00:07.100Z", "duration_ms": 80,
+      "data": { "context_state": "closed" }, "artifacts": [],
+      "facts": [{ "fact_id": "fact_close", "observed_at": "2026-09-17T08:00:07.100Z", "kind": "context", "summary": "已确认浏览器上下文关闭，此前对远端产生的操作影响不会回滚。", "value_path": "/data/context_state", "artifact_handles": [] }]
+    }
+  ]
+}

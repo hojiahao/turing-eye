@@ -1,0 +1,21 @@
+{
+  "name": "turing-eye-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "generate": "openapi-typescript ../contracts/openapi.json -o src/api/generated.ts",
+    "check:generated": "node scripts/check-generated.mjs",
+    "check:contracts": "node --test tests/contracts.test.mjs",
+    "check": "npm run check:generated && tsc --noEmit && npm run check:contracts"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "openapi-typescript": "7.13.0",
+    "typescript": "5.9.3"
+  }
+}
