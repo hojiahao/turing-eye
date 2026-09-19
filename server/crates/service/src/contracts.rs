@@ -1,42 +1,8 @@
 //! 在实现接口前验证已确认契约的传输类型。
 
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de};
-
-/// 平台传入的四位小数比例，内部按万分位整数保存。
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct WeightRatio(u16);
-
-impl WeightRatio {
-    pub fn basis_points(self) -> u16 {
-        self.0
-    }
-}
-
-impl<'de> Deserialize<'de> for WeightRatio {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = String::deserialize(deserializer)?;
-        if value == "1.0000" {
-            return Ok(Self(10_000));
-        }
-        let bytes = value.as_bytes();
-        if bytes.len() != 6 || &bytes[..2] != b"0." || !bytes[2..].iter().all(u8::is_ascii_digit) {
-            return Err(de::Error::custom("expected a ratio from 0.0000 to 1.0000"));
-        }
-        let fraction = value[2..].parse::<u16>().map_err(de::Error::custom)?;
-        Ok(Self(fraction))
-    }
-}
-
-impl Serialize for WeightRatio {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        let text = if self.0 == 10_000 {
-            "1.0000".to_owned()
-        } else {
-            format!("0.{:04}", self.0)
-        };
-        serializer.serialize_str(&text)
-    }
-}
+use serde::{Deserialize, Serialize};
+use turing_eye_review::plans::{DimensionConfig, PlatformDimensions, ValidationIssue};
+pub use turing_eye_review::scoring::{Score, WeightRatio};
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -68,6 +34,24 @@ pub struct CreatePlanRequest {
     pub decision_thresholds: Option<serde_json::Value>,
 }
 
+impl CreatePlanRequest {
+    /// 结构解析之后执行平台维度业务校验；不生成指标或创建方案任务。
+    pub fn validate_dimensions(&self) -> Result<PlatformDimensions, Vec<ValidationIssue>> {
+        PlatformDimensions::new(
+            self.dimensions
+                .iter()
+                .map(|dimension| DimensionConfig {
+                    dimension_key: dimension.dimension_key.clone(),
+                    title: dimension.title.clone(),
+                    weight_ratio: dimension.weight_ratio,
+                    ai_weight_ratio: dimension.ai_weight_ratio,
+                    human_weight_ratio: dimension.human_weight_ratio,
+                })
+                .collect(),
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::WeightRatio;
@@ -75,7 +59,7 @@ mod tests {
     #[test]
     fn every_basis_point_has_an_exact_round_trip() {
         for points in 0..=10_000 {
-            let ratio = WeightRatio(points);
+            let ratio = WeightRatio::from_basis_points(points).unwrap();
             let encoded = serde_json::to_string(&ratio).unwrap();
             let decoded: WeightRatio = serde_json::from_str(&encoded).unwrap();
             assert_eq!(decoded.basis_points(), points);

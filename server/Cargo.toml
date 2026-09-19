@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/service"]
+members = ["crates/review", "crates/service"]
 resolver = "3"
 
 [workspace.package]
@@ -10,7 +10,7 @@ publish = false
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
+serde_json = { version = "1", features = ["preserve_order", "arbitrary_precision", "raw_value"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time", "process", "io-util", "sync", "net", "signal"] }
 
 [profile.dev]
