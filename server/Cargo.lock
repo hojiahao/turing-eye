@@ -2932,6 +2932,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "turing-eye-review"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "turing-eye-service"
 version = "0.1.0"
 dependencies = [
@@ -2946,6 +2954,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tracing",
+ "turing-eye-review",
  "url",
  "uuid",
 ]

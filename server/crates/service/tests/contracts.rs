@@ -11,6 +11,7 @@ struct Case {
     name: String,
     schema: String,
     expect: String,
+    error_code: Option<String>,
     value: Value,
 }
 
@@ -44,10 +45,26 @@ fn all_http_components_and_golden_cases_are_consumable() {
                 .map(|e| e.to_string())
                 .collect::<Vec<_>>()
         );
-        // Business-invalid cases deliberately pass shape checks; R2 supplies business validation.
+        if case.schema == "CreatePlanRequest" && case.expect == "business_invalid" {
+            let parsed: CreatePlanRequest = serde_json::from_value(case.value.clone()).unwrap();
+            let issues = parsed.validate_dimensions().unwrap_err();
+            assert!(
+                issues
+                    .iter()
+                    .any(|issue| serde_json::to_value(issue.code).unwrap().as_str()
+                        == case.error_code.as_deref()),
+                "{}: {issues:?}",
+                case.name
+            );
+        }
         if case.schema == "CreatePlanRequest" && case.expect == "schema_valid" {
             let parsed: CreatePlanRequest = serde_json::from_value(case.value.clone()).unwrap();
+            let validated = parsed.validate_dimensions().unwrap();
             let expected = case.value["dimensions"].as_array().unwrap();
+            assert_eq!(
+                serde_json::to_value(validated.dimensions()).unwrap(),
+                case.value["dimensions"]
+            );
             assert_eq!(parsed.dimensions.len(), expected.len());
             for (actual, original) in parsed.dimensions.iter().zip(expected) {
                 assert_eq!(serde_json::to_value(actual).unwrap(), *original);
